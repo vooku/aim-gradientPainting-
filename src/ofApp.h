@@ -1,6 +1,7 @@
 #pragma once
 
 #include "ofMain.h"
+#include "ofxGui.h"
 
 class ofApp : public ofBaseApp{
 public:
@@ -19,7 +20,16 @@ public:
 	void windowResized(int w, int h);
 	void dragEvent(ofDragInfo dragInfo);
 	void gotMessage(ofMessage msg);
+
+	void loadImage(void);
+	void saveImage(void);
+	void inverseImage(void);
 		
 private:
 	ofImage img;
+	string originalFileExtension;
+
+	// gui
+	ofxPanel gui;
+	ofxButton loadButton, saveButton, invButton;
 };
