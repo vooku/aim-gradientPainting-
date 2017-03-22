@@ -1,8 +1,10 @@
 #include "ofApp.h"
+#include <iostream>
 
 //--------------------------------------------------------------
 void ofApp::setup(){
-
+	img.load("img/manet.jpg");
+	ofBackground(ofColor(40));
 }
 
 //--------------------------------------------------------------
@@ -12,7 +14,7 @@ void ofApp::update(){
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-
+	if (img.isAllocated()) img.draw(0, 0, ofGetWidth(), img.getHeight() * ofGetWidth() / img.getWidth());
 }
 
 //--------------------------------------------------------------
