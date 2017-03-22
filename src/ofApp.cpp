@@ -1,4 +1,5 @@
 #include "ofApp.h"
+#include "Eigen/Sparse"
 #include <iostream>
 
 //--------------------------------------------------------------
@@ -13,6 +14,8 @@ void ofApp::setup(){
 	gui.add(loadButton.setup("Load"));
 	gui.add(saveButton.setup("Save"));
 	gui.add(invButton.setup("Inverse"));
+
+	Eigen::SparseMatrix<double> mat;
 
 }
 
