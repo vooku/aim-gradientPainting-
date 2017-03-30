@@ -40,8 +40,8 @@ void ofApp::setup(){
 	gui.add(saveButton.setup("Save"));
 	gui.add(invButton.setup("Inverse"));
 
-	w = 300;
-	h = 200;
+	w = 1000;
+	h = 1000;
 	gradient = new unsigned char[w * h];
 	for (int j = 0; j < h; j++)	{
 		for (int i = 0; i < w; i++) {
@@ -74,9 +74,9 @@ void ofApp::setup(){
 	
 	Eigen::SparseMatrix<double> A(w * h, w * h);
 	A.setFromTriplets(triplets.begin(), triplets.end());
-	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> solver;
-	//solver.setMaxIterations(10000);
-	solver.compute(A);
+    A.makeCompressed();
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver(A);
+
 	if (solver.info() != Eigen::Success) {
         std::cerr << "Decomposition failed" << std::endl;
 	}
