@@ -29,6 +29,9 @@ private:
 	ofImage img;
 	string originalFileExtension;
 
+	unsigned char *gradient;
+	int w, h;
+
 	// gui
 	ofxPanel gui;
 	ofxButton loadButton, saveButton, invButton;

@@ -1,6 +1,31 @@
 #include "ofApp.h"
 #include "Eigen/Sparse"
+#include "Eigen/IterativeLinearSolvers"
 #include <iostream>
+#include <vector>
+#include <cmath>
+
+void getNeighbours(int & n0, int & n1, int & n2, int & n3, const int idx, const int w, const int h) {
+	if (idx < w) // first row
+		n0 = -1;
+	else 
+		n0 = idx - w;
+
+	if ((idx + 1) % w == 0) // last column
+		n1 = -1;
+	else
+		n1 = idx + 1;
+
+	if (idx >= w * h - w) // last row
+		n2 = -1;
+	else
+		n2 = idx + w;
+
+	if (idx % w == 0) // first column
+		n3 = -1;
+	else
+		n3 = idx - 1;
+}
 
 //--------------------------------------------------------------
 void ofApp::setup(){
@@ -15,8 +40,70 @@ void ofApp::setup(){
 	gui.add(saveButton.setup("Save"));
 	gui.add(invButton.setup("Inverse"));
 
-	Eigen::SparseMatrix<double> mat;
+	w = 300;
+	h = 200;
+	gradient = new unsigned char[w * h];
+	for (int j = 0; j < h; j++)	{
+		for (int i = 0; i < w; i++) {
+			if (j == h / 2 && i > w / 3 && i < w * 2 / 3)
+				gradient[j * w + i] = 1;
+			else
+				gradient[j * w + i] = 0;
+		}
+	}
 
+	std::vector<Eigen::Triplet<double>> triplets;
+	Eigen::VectorXd b(w * h);
+	int n0, n1, n2, n3;
+
+	for (int i = 0; i < w * h; i++) {
+		b[i] = gradient[i];
+
+		getNeighbours(n0, n1, n2, n3, i, w, h);
+
+		triplets.push_back(Eigen::Triplet<double>(i, i, -4));
+		if (n0 >= 0)
+			triplets.push_back(Eigen::Triplet<double>(i, n0, 1));
+		if (n1 >= 0)
+			triplets.push_back(Eigen::Triplet<double>(i, n1, 1));
+		if (n2 >= 0)
+			triplets.push_back(Eigen::Triplet<double>(i, n2, 1));
+		if (n3 >= 0)
+			triplets.push_back(Eigen::Triplet<double>(i, n3, 1));
+	}
+	
+	Eigen::SparseMatrix<double> A(w * h, w * h);
+	A.setFromTriplets(triplets.begin(), triplets.end());
+	Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> solver;
+	//solver.setMaxIterations(10000);
+	solver.compute(A);
+	if (solver.info() != Eigen::Success) {
+        std::cerr << "Decomposition failed" << std::endl;
+	}
+	else {
+		Eigen::VectorXd x = solver.solve(b);
+
+		if (solver.info() != Eigen::Success) {
+            std::cerr << "No convergence" << std::endl;
+		}
+        else {
+            ofPixels pixelData;
+            pixelData.allocate(w, h, 1);
+
+            float maxVal = -HUGE_VALF;
+            for (int i = 0; i < w * h; i++) {
+                if (abs(x[i]) > maxVal)
+                    maxVal = abs(x[i]);
+            }
+            for (int i = 0; i < w * h; i++) {
+                pixelData[i] = floor(abs(x[i]) / maxVal * 255);
+            }
+            img.setFromPixels(pixelData);
+        }
+	}
+    
+
+	delete[] gradient;
 }
 
 //--------------------------------------------------------------
@@ -30,7 +117,7 @@ void ofApp::draw(){
 		if (img.getWidth() > ofGetWidth()) {
 			img.draw(0, 0, ofGetWidth(), img.getHeight() * ofGetWidth() / img.getWidth());
 		}
-		else img.draw(0, 0);
+		else img.draw((ofGetWidth() - img.getWidth()) / 2, (ofGetHeight() - img.getHeight()) / 2);
 	}
 
 	gui.draw();
@@ -87,8 +174,8 @@ void ofApp::gotMessage(ofMessage msg){
 }
 
 void ofApp::loadImage(void){
-	//D:\Program Files\openFrameworks\apps\myApps\gradientPaint\bin\data\img
-	ofFileDialogResult openFileResult = ofSystemLoadDialog("Select a jpg or png");
+
+    ofFileDialogResult openFileResult = ofSystemLoadDialog("Select a jpg or png");
 
 	if (openFileResult.bSuccess) {
 		ofFile file(openFileResult.getPath());
@@ -112,7 +199,10 @@ void ofApp::saveImage(void){
 
 	ofFileDialogResult saveFileResult = ofSystemSaveDialog(ofGetTimestampString() + "." + originalFileExtension, "Save your file");
 	if (saveFileResult.bSuccess) {
-		img.save(saveFileResult.filePath + "." + originalFileExtension);
+		if (!originalFileExtension.empty())
+            img.save(saveFileResult.filePath + "." + originalFileExtension);
+        else
+            img.save(saveFileResult.filePath);
 	}
 }
 
@@ -126,9 +216,10 @@ void ofApp::inverseImage(void){
 
 	for (int i = 0; i < width; i++) {
 		for (int j = 0; j < img.getHeight(); j++) {
-			pixelData[3 * (i + j * width) + 0] = 255 - pixelData[3 * (i + j * width) + 0];
-			pixelData[3 * (i + j * width) + 1] = 255 - pixelData[3 * (i + j * width) + 1];
-			pixelData[3 * (i + j * width) + 2] = 255 - pixelData[3 * (i + j * width) + 2];
+            int channels = pixelData.getNumChannels();
+            for (int k = 0; k < channels; k++) {
+                pixelData[channels * (i + j * width) + k] = 255 - pixelData[channels * (i + j * width) + k];
+            }
 		}
 
 	}
