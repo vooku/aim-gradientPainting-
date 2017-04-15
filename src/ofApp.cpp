@@ -1,114 +1,33 @@
 #include "ofApp.h"
-#include "Eigen/Sparse"
-#include "Eigen/IterativeLinearSolvers"
 #include <iostream>
 #include <vector>
 #include <cmath>
 
-void getNeighbours(int & n0, int & n1, int & n2, int & n3, const int idx, const int w, const int h) {
-	if (idx < w) // first row
-		n0 = -1;
-	else 
-		n0 = idx - w;
-
-	if ((idx + 1) % w == 0) // last column
-		n1 = -1;
-	else
-		n1 = idx + 1;
-
-	if (idx >= w * h - w) // last row
-		n2 = -1;
-	else
-		n2 = idx + w;
-
-	if (idx % w == 0) // first column
-		n3 = -1;
-	else
-		n3 = idx - 1;
-}
-
 //--------------------------------------------------------------
-void ofApp::setup(){
+void ofApp::setup() {
+    computing = false;
 	ofBackground(ofColor(40));
 
 	loadButton.addListener(this, &ofApp::loadImage);
 	saveButton.addListener(this, &ofApp::saveImage);
 	invButton.addListener(this, &ofApp::inverseImage);
+    genButton.addListener(this, &ofApp::generateGradient);
 
 	gui.setup();
 	gui.add(loadButton.setup("Load"));
 	gui.add(saveButton.setup("Save"));
 	gui.add(invButton.setup("Inverse"));
-
-	w = 1000;
-	h = 1000;
-	gradient = new unsigned char[w * h];
-	for (int j = 0; j < h; j++)	{
-		for (int i = 0; i < w; i++) {
-			if (j == h / 2 && i > w / 3 && i < w * 2 / 3)
-				gradient[j * w + i] = 1;
-			else
-				gradient[j * w + i] = 0;
-		}
-	}
-
-	std::vector<Eigen::Triplet<double>> triplets;
-	Eigen::VectorXd b(w * h);
-	int n0, n1, n2, n3;
-
-	for (int i = 0; i < w * h; i++) {
-		b[i] = gradient[i];
-
-		getNeighbours(n0, n1, n2, n3, i, w, h);
-
-		triplets.push_back(Eigen::Triplet<double>(i, i, -4));
-		if (n0 >= 0)
-			triplets.push_back(Eigen::Triplet<double>(i, n0, 1));
-		if (n1 >= 0)
-			triplets.push_back(Eigen::Triplet<double>(i, n1, 1));
-		if (n2 >= 0)
-			triplets.push_back(Eigen::Triplet<double>(i, n2, 1));
-		if (n3 >= 0)
-			triplets.push_back(Eigen::Triplet<double>(i, n3, 1));
-	}
-	
-	Eigen::SparseMatrix<double> A(w * h, w * h);
-	A.setFromTriplets(triplets.begin(), triplets.end());
-    A.makeCompressed();
-    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver(A);
-
-	if (solver.info() != Eigen::Success) {
-        std::cerr << "Decomposition failed" << std::endl;
-	}
-	else {
-		Eigen::VectorXd x = solver.solve(b);
-
-		if (solver.info() != Eigen::Success) {
-            std::cerr << "No convergence" << std::endl;
-		}
-        else {
-            ofPixels pixelData;
-            pixelData.allocate(w, h, 1);
-
-            float maxVal = -HUGE_VALF;
-            for (int i = 0; i < w * h; i++) {
-                if (abs(x[i]) > maxVal)
-                    maxVal = abs(x[i]);
-            }
-            for (int i = 0; i < w * h; i++) {
-                pixelData[i] = floor(abs(x[i]) / maxVal * 255);
-            }
-            img.setFromPixels(pixelData);
-        }
-	}
-    
-
-	delete[] gradient;
+    gui.add(genButton.setup("Generate gradient"));
+    gui.add(size.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(1000)));
 }
 
 //--------------------------------------------------------------
-void ofApp::update(){
-
+void ofApp::update() {
+    if (computeGradient.done_) {
+        img.setFromPixels(computeGradient.pixelData_);
+        computeGradient.done_ = false;
+        computing = false;
+    }
 }
 
 //--------------------------------------------------------------
@@ -120,57 +39,30 @@ void ofApp::draw(){
 		else img.draw((ofGetWidth() - img.getWidth()) / 2, (ofGetHeight() - img.getHeight()) / 2);
 	}
 
+    if (computing)
+        ofDrawBitmapString("Computing gradient...", 250, 25);
+
 	gui.draw();
 }
 
 //--------------------------------------------------------------
-void ofApp::keyPressed(int key){
-
-}
-
-//--------------------------------------------------------------
 void ofApp::keyReleased(int key){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseMoved(int x, int y ){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseDragged(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mousePressed(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseReleased(int x, int y, int button){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseEntered(int x, int y){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::mouseExited(int x, int y){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::windowResized(int w, int h){
-
-}
-
-//--------------------------------------------------------------
-void ofApp::gotMessage(ofMessage msg){
-
+    switch (key) {
+    case 'g':
+        this->generateGradient();
+        break;
+    case 'i':
+        this->inverseImage();
+        break;
+    case 'l':
+        this->loadImage();
+        break;
+    case 's':
+        this->saveImage();
+        break;
+    default:
+        break;
+    }
 }
 
 void ofApp::loadImage(void){
@@ -226,7 +118,8 @@ void ofApp::inverseImage(void){
 	img.setFromPixels(pixelData);
 }
 
-//--------------------------------------------------------------
-void ofApp::dragEvent(ofDragInfo dragInfo){ 
-
+void ofApp::generateGradient(void) {
+    computing = true;
+    computeGradient.setup(std::round(size->x), std::round(size->y));
+    computeGradient.startThread();
 }
