@@ -4,22 +4,22 @@
 
 void getNeighbours(int & n0, int & n1, int & n2, int & n3, const int idx, const int w, const int h) {
     if (idx < w) // first row
-        n0 = -1;
+        n0 = -idx;
     else
         n0 = idx - w;
 
     if ((idx + 1) % w == 0) // last column
-        n1 = -1;
+        n1 = -(w + (idx + 1) / w - 1);
     else
         n1 = idx + 1;
 
     if (idx >= w * h - w) // last row
-        n2 = -1;
+        n2 = -(w + h + (w - 1 - idx % w));
     else
         n2 = idx + w;
 
     if (idx % w == 0) // first column
-        n3 = -1;
+        n3 = -(2 * w + h + (h - 1 - idx / w));
     else
         n3 = idx - 1;
 }
@@ -36,33 +36,53 @@ void ComputeGradient::threadedFunction() {
         done_ = true;
         return;
     }
+
     // prepare the desired gradient
     float* gradient = new float[w_ * h_];
     for (int j = 0; j < h_; j++) {
         for (int i = 0; i < w_; i++) {
             if (j == h_ / 2 && i > w_ / 3 && i < w_ * 2 / 3.0f)
-                gradient[j * w_ + i] = 255;
+                gradient[j * w_ + i] = 1;
             else
                 gradient[j * w_ + i] = 0;
         }
+    }
+
+    //prepare the boundary
+    float* boundary = new float[2 * (w_ + h_)];
+    for (int i = 0; i < 2 * (w_ + h_); i++) {
+        if (i < w_ + h_)
+            boundary[i] = 0;
+        else
+            boundary[i] = 10;
     }
 
     // construct the matrix
     std::vector<Eigen::Triplet<double>> triplets;
     Eigen::VectorXd b(w_ * h_);
     int n0, n1, n2, n3;
+
     for (int i = 0; i < w_ * h_; i++) {
         b[i] = gradient[i];
+
         getNeighbours(n0, n1, n2, n3, i, w_, h_);
         triplets.push_back(Eigen::Triplet<double>(i, i, -4));
-        if (n0 >= 0)
+        if (n0 > 0)
             triplets.push_back(Eigen::Triplet<double>(i, n0, 1));
-        if (n1 >= 0)
+        else
+            b[i] -= boundary[-n0];
+        if (n1 > 0)
             triplets.push_back(Eigen::Triplet<double>(i, n1, 1));
-        if (n2 >= 0)
+        else
+            b[i] -= boundary[-n1];
+        if (n2 > 0)
             triplets.push_back(Eigen::Triplet<double>(i, n2, 1));
-        if (n3 >= 0)
+        else
+            b[i] -= boundary[-n2];
+        if (n3 > 0)
             triplets.push_back(Eigen::Triplet<double>(i, n3, 1));
+        else
+            b[i] -= boundary[-n3];
     }
     
     // solve matrix
@@ -94,5 +114,6 @@ void ComputeGradient::threadedFunction() {
 
     // cleanup
     delete[] gradient;
+    delete[] boundary;
     done_ = true;
 }
