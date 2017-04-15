@@ -24,7 +24,9 @@ void ofApp::setup() {
 //--------------------------------------------------------------
 void ofApp::update() {
     if (computeGradient.done_) {
-        img.setFromPixels(computeGradient.pixelData_);
+        if (computeGradient.pixelData_.isAllocated()) {
+            img.setFromPixels(computeGradient.pixelData_);
+        }
         computeGradient.done_ = false;
         computing = false;
     }
@@ -74,11 +76,7 @@ void ofApp::loadImage(void){
 		string fileExtension = ofToLower(file.getExtension());
 
 		if (fileExtension == "jpg" || fileExtension == "png") {
-
-			//Save the file extension to use when we save out
 			originalFileExtension = fileExtension;
-
-			//Load the selected image
 			img.load(openFileResult.getPath());
 		}
 	}
@@ -113,13 +111,12 @@ void ofApp::inverseImage(void){
                 pixelData[channels * (i + j * width) + k] = 255 - pixelData[channels * (i + j * width) + k];
             }
 		}
-
 	}
 	img.setFromPixels(pixelData);
 }
 
 void ofApp::generateGradient(void) {
     computing = true;
-    computeGradient.setup(std::round(size->x), std::round(size->y));
+    computeGradient.setup(static_cast<int>(size->x), static_cast<int>(size->y));
     computeGradient.startThread();
 }
