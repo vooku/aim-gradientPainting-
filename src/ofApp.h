@@ -28,14 +28,14 @@ public:
     void generateGradient(void);
 		
 private:
-	ofImage img;
-	string originalFileExtension;
+	ofImage img_;
+	string originalFileExtension_;
 
-    ComputeGradient computeGradient;
-    bool computing;
+    ComputeGradient computeGradient_;
+    bool computing_;
 
 	// gui
-	ofxPanel gui;
-	ofxButton loadButton, saveButton, invButton, genButton;
-    ofxVec2Slider size;
+	ofxPanel gui_;
+	ofxButton loadButton_, saveButton_, invButton_, genButton_;
+    ofxVec2Slider size_;
 };

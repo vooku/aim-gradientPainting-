@@ -5,44 +5,46 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
-    computing = false;
+    computing_ = false;
 	ofBackground(ofColor(40));
 
-	loadButton.addListener(this, &ofApp::loadImage);
-	saveButton.addListener(this, &ofApp::saveImage);
-	invButton.addListener(this, &ofApp::inverseImage);
-    genButton.addListener(this, &ofApp::generateGradient);
+	loadButton_.addListener(this, &ofApp::loadImage);
+	saveButton_.addListener(this, &ofApp::saveImage);
+	invButton_.addListener(this, &ofApp::inverseImage);
+    genButton_.addListener(this, &ofApp::generateGradient);
 
-	gui.setup();
-	gui.add(loadButton.setup("Load"));
-	gui.add(saveButton.setup("Save"));
-	gui.add(invButton.setup("Inverse"));
-    gui.add(genButton.setup("Generate gradient"));
-    gui.add(size.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(200)));
+	gui_.setup();
+	gui_.add(loadButton_.setup("Load"));
+	gui_.add(saveButton_.setup("Save"));
+	gui_.add(invButton_.setup("Inverse"));
+    gui_.add(genButton_.setup("Generate gradient"));
+    gui_.add(size_.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(200)));
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-    if (computeGradient.done_) {
-        img.setFromPixels(computeGradient.pixelData_);
-        computeGradient.done_ = false;
-        computing = false;
+    if (computeGradient_.done_) {
+        if (computeGradient_.pixelData_.isAllocated()) {
+            img_.setFromPixels(computeGradient_.pixelData_);
+        }
+        computeGradient_.done_ = false;
+        computing_ = false;
     }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
-	if (img.isAllocated()) {
-		if (img.getWidth() > ofGetWidth()) {
-			img.draw(0, 0, ofGetWidth(), img.getHeight() * ofGetWidth() / img.getWidth());
+	if (img_.isAllocated()) {
+		if (img_.getWidth() > ofGetWidth()) {
+			img_.draw(0, 0, ofGetWidth(), img_.getHeight() * ofGetWidth() / img_.getWidth());
 		}
-		else img.draw((ofGetWidth() - img.getWidth()) / 2, (ofGetHeight() - img.getHeight()) / 2);
+		else img_.draw((ofGetWidth() - img_.getWidth()) / 2, (ofGetHeight() - img_.getHeight()) / 2);
 	}
 
-    if (computing)
+    if (computing_)
         ofDrawBitmapString("Computing gradient...", 250, 25);
 
-	gui.draw();
+	gui_.draw();
 }
 
 //--------------------------------------------------------------
@@ -74,40 +76,36 @@ void ofApp::loadImage(void){
 		string fileExtension = ofToLower(file.getExtension());
 
 		if (fileExtension == "jpg" || fileExtension == "png") {
-
-			//Save the file extension to use when we save out
-			originalFileExtension = fileExtension;
-
-			//Load the selected image
-			img.load(openFileResult.getPath());
+            originalFileExtension_ = fileExtension;
+            img_.load(openFileResult.getPath());
 		}
 	}
 }
 
 void ofApp::saveImage(void){
-	if (!img.isAllocated()) {
+	if (!img_.isAllocated()) {
 		return;
 	}
 
-	ofFileDialogResult saveFileResult = ofSystemSaveDialog(ofGetTimestampString() + "." + originalFileExtension, "Save your file");
+	ofFileDialogResult saveFileResult = ofSystemSaveDialog(ofGetTimestampString() + "." + originalFileExtension_, "Save your file");
 	if (saveFileResult.bSuccess) {
-		if (!originalFileExtension.empty())
-            img.save(saveFileResult.filePath + "." + originalFileExtension);
+		if (!originalFileExtension_.empty())
+            img_.save(saveFileResult.filePath + "." + originalFileExtension_);
         else
-            img.save(saveFileResult.filePath);
+            img_.save(saveFileResult.filePath);
 	}
 }
 
 void ofApp::inverseImage(void){
-	if (!img.isAllocated()) {
+	if (!img_.isAllocated()) {
 		return;
 	}
 
-	int width = img.getWidth();
-	ofPixels pixelData = img.getPixels();
+	int width = img_.getWidth();
+	ofPixels pixelData = img_.getPixels();
 
 	for (int i = 0; i < width; i++) {
-		for (int j = 0; j < img.getHeight(); j++) {
+		for (int j = 0; j < img_.getHeight(); j++) {
             int channels = pixelData.getNumChannels();
             for (int k = 0; k < channels; k++) {
                 pixelData[channels * (i + j * width) + k] = 255 - pixelData[channels * (i + j * width) + k];
@@ -115,11 +113,11 @@ void ofApp::inverseImage(void){
 		}
 
 	}
-	img.setFromPixels(pixelData);
+	img_.setFromPixels(pixelData);
 }
 
 void ofApp::generateGradient(void) {
-    computing = true;
-    computeGradient.setup(std::round(size->x), std::round(size->y));
-    computeGradient.startThread();
+    computing_ = true;
+    computeGradient_.setup(std::round(size_->x), std::round(size_->y));
+    computeGradient_.startThread();
 }
