@@ -2,6 +2,10 @@
 #include "Eigen/Sparse"
 #include "Eigen/IterativeLinearSolvers"
 
+#define USE_EIGEN
+#define NORMALIZE
+#define WHITE 1
+
 void getNeighbours(int* neighbours, bool* bounds, const int idx, const int w, const int h) {
     // first row
     if (idx < w) {
@@ -59,9 +63,9 @@ void ComputeGradient::threadedFunction() {
     for (int j = 0; j < h_; j++) {
         for (int i = 0; i < w_; i++) {
             if (j == h_ / 2 && i > w_ / 3 && i < w_ * 2 / 3.0f)
-                gradient[j * w_ + i] = 1;
+                gradient[j * w_ + i] = WHITE;
             else
-                gradient[j * w_ + i] = 0;
+                gradient[j * w_ + i] = 0;// .5f * WHITE;
         }
     }
 
@@ -71,9 +75,22 @@ void ComputeGradient::threadedFunction() {
         if (i < w_ + h_)
             boundary[i] = 0;
         else
-            boundary[i] = 1;
+            boundary[i] = WHITE;
     }
 
+#ifdef USE_EIGEN
+    this->solveEigen(gradient, boundary);
+#else
+    this->solveGaussSeidel(gradient, boundary);
+#endif
+    
+    // cleanup
+    delete[] gradient;
+    delete[] boundary;
+    done_ = true;
+}
+
+void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
     // construct the matrix
     std::vector<Eigen::Triplet<double>> triplets;
     Eigen::VectorXd b(w_ * h_);
@@ -102,41 +119,83 @@ void ComputeGradient::threadedFunction() {
         else
             triplets.push_back(Eigen::Triplet<double>(i, neighbours[3], 1));
     }
-    
+
     // solve matrix
     Eigen::SparseMatrix<double> A(w_ * h_, w_ * h_);
     A.setFromTriplets(triplets.begin(), triplets.end());
-    //A.makeCompressed();
-    //Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver(A);
-    Eigen::ConjugateGradient<Eigen::SparseMatrix<double>, Eigen::Lower | Eigen::Upper> solver;
-    solver.compute(A);
-    Eigen::VectorXd x = solver.solve(b);
+    A.makeCompressed();
+    Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver(A);
 
-   /* if (solver.info() != Eigen::Success) {
+    if (solver.info() != Eigen::Success) {
         std::cerr << "Decomposition failed" << std::endl;
     }
     else {
-        Eigen::VectorXd x = solver.solve(b);*/
+        Eigen::VectorXd x = solver.solve(b);
         if (solver.info() != Eigen::Success) {
             std::cerr << "No convergence" << std::endl;
         }
         else {
             pixelData_.allocate(w_, h_, 1);
+#ifdef NORMALIZE
             float maxVal = -HUGE_VALF;
             for (int i = 0; i < w_ * h_; i++) {
                 if (abs(x[i]) > maxVal)
                     maxVal = abs(x[i]);
             }
             for (int i = 0; i < w_ * h_; i++) {
-             //   pixelData_[i] = floor(abs(x[i]) / maxVal * 255);
-                pixelData_[i] = x[i] * 255;
+                pixelData_[i] = abs(x[i]) / maxVal * 255;
             }
-            //std::cout << x << std::endl;
+#else 
+            for (int i = 0; i < w_ * h_; i++) {
+                pixelData_[i] = x[i] * 255 / WHITE;
+            }
+#endif
         }
-   // }
+    }
+}
 
-    // cleanup
-    delete[] gradient;
-    delete[] boundary;
-    done_ = true;
+void ComputeGradient::solveGaussSeidel(const float* gradient, const float* boundary) {
+    // construct the matrix
+    float* I = new float[w_ * h_];
+    float* b = new float[w_ * h_];
+    int neighbours[4];
+    bool bounds[4];
+    for (int i = 0; i < w_ * h_; i++) {
+        I[i] = gradient[i];
+        
+        b[i] = gradient[i];
+        getNeighbours(neighbours, bounds, i, w_, h_);
+        b[i] -= bounds[0] ? boundary[neighbours[0]] : 0;
+        b[i] -= bounds[1] ? boundary[neighbours[1]] : 0;
+        b[i] -= bounds[2] ? boundary[neighbours[2]] : 0;
+        b[i] -= bounds[3] ? boundary[neighbours[3]] : 0;
+    }
+
+    // solve matrix
+    for (int i = 0; i < 1000; i++) {
+        for (int j = 0; j < w_ * h_; j++) {
+            this->gaussSeidelStep(I, b, j);
+        }
+    }
+
+    pixelData_.allocate(w_, h_, 1);
+
+    for (int i = 0; i < w_ * h_; i++) {
+        pixelData_[i] = I[i] * 255 / WHITE;
+    }
+}
+
+void ComputeGradient::gaussSeidelStep(float * I, const float * b, const int idx) {
+    int neighbours[4];
+    bool bounds[4];
+
+    getNeighbours(neighbours, bounds, idx, w_, h_);
+
+    I[idx] = 0;
+    I[idx] += !bounds[0] ? I[neighbours[0]] : 0;
+    I[idx] += !bounds[1] ? I[neighbours[1]] : 0;
+    I[idx] += !bounds[2] ? I[neighbours[2]] : 0;
+    I[idx] += !bounds[3] ? I[neighbours[3]] : 0;
+    I[idx] += b[idx];
+    I[idx] /= 4.0f;
 }

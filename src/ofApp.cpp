@@ -18,7 +18,7 @@ void ofApp::setup() {
 	gui_.add(saveButton_.setup("Save"));
 	gui_.add(invButton_.setup("Inverse"));
     gui_.add(genButton_.setup("Generate gradient"));
-    gui_.add(size_.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(200)));
+    gui_.add(size_.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(1000)));
 }
 
 //--------------------------------------------------------------
