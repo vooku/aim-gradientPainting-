@@ -2,7 +2,7 @@
 #include "Eigen/Sparse"
 #include "Eigen/IterativeLinearSolvers"
 
-#define USE_EIGEN
+//#define USE_EIGEN
 #define NORMALIZE
 #define WHITE 1
 
@@ -45,10 +45,11 @@ void getNeighbours(int* neighbours, bool* bounds, const int idx, const int w, co
     }
 }
 
-void ComputeGradient::setup(const int w, const int h) {
+void ComputeGradient::setup(const int w, const int h, const int i) {
     done_ = false;
     w_ = w;
     h_ = h;
+    iterations_ = i;
 }
 
 void ComputeGradient::threadedFunction() {
@@ -65,14 +66,14 @@ void ComputeGradient::threadedFunction() {
             if (j == h_ / 2 && i > w_ / 3 && i < w_ * 2 / 3.0f)
                 gradient[j * w_ + i] = WHITE;
             else
-                gradient[j * w_ + i] = 0;// .5f * WHITE;
+                gradient[j * w_ + i] = 0;
         }
     }
 
     // prepare the boundary
     float* boundary = new float[2 * (w_ + h_)];
     for (int i = 0; i < 2 * (w_ + h_); i++) {
-        if (i < w_ + h_)
+        if (i < 2 * w_ + h_)
             boundary[i] = 0;
         else
             boundary[i] = WHITE;
@@ -157,24 +158,17 @@ void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
 void ComputeGradient::solveGaussSeidel(const float* gradient, const float* boundary) {
     // construct the matrix
     float* I = new float[w_ * h_];
-    float* b = new float[w_ * h_];
     int neighbours[4];
     bool bounds[4];
     for (int i = 0; i < w_ * h_; i++) {
         I[i] = gradient[i];
-        
-        b[i] = gradient[i];
-        getNeighbours(neighbours, bounds, i, w_, h_);
-        b[i] -= bounds[0] ? boundary[neighbours[0]] : 0;
-        b[i] -= bounds[1] ? boundary[neighbours[1]] : 0;
-        b[i] -= bounds[2] ? boundary[neighbours[2]] : 0;
-        b[i] -= bounds[3] ? boundary[neighbours[3]] : 0;
     }
 
     // solve matrix
-    for (int i = 0; i < 1000; i++) {
+    for (int i = 0; i < iterations_; i++) {
         for (int j = 0; j < w_ * h_; j++) {
-            this->gaussSeidelStep(I, b, j);
+            if (gradient[j] == 0.0f)
+                this->gaussSeidelStep(I, boundary, j);
         }
     }
 
@@ -183,19 +177,20 @@ void ComputeGradient::solveGaussSeidel(const float* gradient, const float* bound
     for (int i = 0; i < w_ * h_; i++) {
         pixelData_[i] = I[i] * 255 / WHITE;
     }
+    
+    delete[] I;
 }
 
-void ComputeGradient::gaussSeidelStep(float * I, const float * b, const int idx) {
+void ComputeGradient::gaussSeidelStep(float * I, const float* boundary, const int idx) {
     int neighbours[4];
     bool bounds[4];
 
     getNeighbours(neighbours, bounds, idx, w_, h_);
 
     I[idx] = 0;
-    I[idx] += !bounds[0] ? I[neighbours[0]] : 0;
-    I[idx] += !bounds[1] ? I[neighbours[1]] : 0;
-    I[idx] += !bounds[2] ? I[neighbours[2]] : 0;
-    I[idx] += !bounds[3] ? I[neighbours[3]] : 0;
-    I[idx] += b[idx];
-    I[idx] /= 4.0f;
+    I[idx] += !bounds[0] ? I[neighbours[0]] : boundary[neighbours[0]];
+    I[idx] += !bounds[1] ? I[neighbours[1]] : boundary[neighbours[1]];
+    I[idx] += !bounds[2] ? I[neighbours[2]] : boundary[neighbours[2]];
+    I[idx] += !bounds[3] ? I[neighbours[3]] : boundary[neighbours[3]];
+    I[idx] /= 4;
 }

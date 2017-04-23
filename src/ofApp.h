@@ -26,6 +26,7 @@ public:
 	void saveImage(void);
 	void inverseImage(void);
     void generateGradient(void);
+    void switchToggle();
 		
 private:
 	ofImage img_;
@@ -38,4 +39,6 @@ private:
 	ofxPanel gui_;
 	ofxButton loadButton_, saveButton_, invButton_, genButton_;
     ofxVec2Slider size_;
+    ofxIntSlider iterations_;
+    ofParameter<bool> eigenToggle_, gsToggle_;
 };
