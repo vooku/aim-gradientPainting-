@@ -5,34 +5,35 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+
     computing_ = false;
 	ofBackground(ofColor(40));
-
-	loadButton_.addListener(this, &ofApp::loadImage);
-	saveButton_.addListener(this, &ofApp::saveImage);
-	invButton_.addListener(this, &ofApp::inverseImage);
-    genButton_.addListener(this, &ofApp::generateGradient);
-    //eigenToggle_.addListener(this, &ofApp::switchToggle);
-    //gsToggle_.addListener(this, &ofApp::switchToggle);
 
 	gui_.setup();
 	gui_.add(loadButton_.setup("Load"));
 	gui_.add(saveButton_.setup("Save"));
 	gui_.add(invButton_.setup("Inverse"));
     gui_.add(genButton_.setup("Generate gradient"));
-    gui_.add(iterations_.setup("Iterations", 1000, 0, 5000));
-    //gui_.add(eigenToggle_.set("Use Eigen library", false));
-    //gui_.add(gsToggle_.set("Use Gauss Seidel", true));
+    options_.setup();
+    options_.setName("Options");
+    options_.add(toggle_.setup("Use Gauss Seidel", false));
+    options_.add(iterations_.setup("Iterations", 1000, 0, 5000));
+    gui_.add(&options_);
     gui_.add(size_.setup("Next generated image size", ofVec2f(100), ofVec2f(0), ofVec2f(1000)));
+
+    loadButton_.addListener(this, &ofApp::loadImage);
+    saveButton_.addListener(this, &ofApp::saveImage);
+    invButton_.addListener(this, &ofApp::inverseImage);
+    genButton_.addListener(this, &ofApp::generateGradient);
 }
 
 //--------------------------------------------------------------
 void ofApp::update() {
-    if (computeGradient_.done_) {
-        if (computeGradient_.pixelData_.isAllocated()) {
-            img_.setFromPixels(computeGradient_.pixelData_);
+    if (computeGradient_.done) {
+        if (computeGradient_.pixelData.isAllocated()) {
+            img_.setFromPixels(computeGradient_.pixelData);
         }
-        computeGradient_.done_ = false;
+        computeGradient_.done = false;
         computing_ = false;
     }
 }
@@ -125,9 +126,4 @@ void ofApp::generateGradient(void) {
     computing_ = true;
     computeGradient_.setup(std::round(size_->x), std::round(size_->y), iterations_);
     computeGradient_.startThread();
-}
-
-void ofApp::switchToggle() {
-    eigenToggle_ = !eigenToggle_;
-    gsToggle_ = !gsToggle_;
 }

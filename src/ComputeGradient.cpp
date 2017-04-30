@@ -45,35 +45,36 @@ void getNeighbours(int* neighbours, bool* bounds, const int idx, const int w, co
     }
 }
 
-void ComputeGradient::setup(const int w, const int h, const int i) {
-    done_ = false;
-    w_ = w;
-    h_ = h;
-    iterations_ = i;
+void ComputeGradient::setup(const int w, const int h, const int i, const bool gs) {
+    done = false;
+    width = w;
+    height = h;
+    iterations = i;
+    useGaussSeidel = gs;
 }
 
 void ComputeGradient::threadedFunction() {
-    if (w_ <= 0 || h_ <= 0) {
-        std::cerr << "Wrong image size: " << w_ << ", " << h_ << std::endl;
-        done_ = true;
+    if (width <= 0 || height <= 0) {
+        std::cerr << "Wrong image size: " << width << ", " << height << std::endl;
+        done = true;
         return;
     }
 
     // prepare the desired gradient
-    float* gradient = new float[w_ * h_];
-    for (int j = 0; j < h_; j++) {
-        for (int i = 0; i < w_; i++) {
-            if (j == h_ / 2 && i > w_ / 3 && i < w_ * 2 / 3.0f)
-                gradient[j * w_ + i] = WHITE;
+    float* gradient = new float[width * height];
+    for (int j = 0; j < height; j++) {
+        for (int i = 0; i < width; i++) {
+            if (j == height / 2 && i > width / 3 && i < width * 2 / 3.0f)
+                gradient[j * width + i] = WHITE;
             else
-                gradient[j * w_ + i] = 0;
+                gradient[j * width + i] = 0;
         }
     }
 
     // prepare the boundary
-    float* boundary = new float[2 * (w_ + h_)];
-    for (int i = 0; i < 2 * (w_ + h_); i++) {
-        if (i < 2 * w_ + h_)
+    float* boundary = new float[2 * (width + height)];
+    for (int i = 0; i < 2 * (width + height); i++) {
+        if (i < 2 * width + height)
             boundary[i] = 0;
         else
             boundary[i] = WHITE;
@@ -88,20 +89,20 @@ void ComputeGradient::threadedFunction() {
     // cleanup
     delete[] gradient;
     delete[] boundary;
-    done_ = true;
+    done = true;
 }
 
 void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
     // construct the matrix
     std::vector<Eigen::Triplet<double>> triplets;
-    Eigen::VectorXd b(w_ * h_);
+    Eigen::VectorXd b(width * height);
     int neighbours[4];
     bool bounds[4];
 
-    for (int i = 0; i < w_ * h_; i++) {
+    for (int i = 0; i < width * height; i++) {
         b[i] = gradient[i];
 
-        getNeighbours(neighbours, bounds, i, w_, h_);
+        getNeighbours(neighbours, bounds, i, width, height);
         triplets.push_back(Eigen::Triplet<double>(i, i, -4));
         if (bounds[0])
             b[i] -= boundary[neighbours[0]];
@@ -122,7 +123,7 @@ void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
     }
 
     // solve matrix
-    Eigen::SparseMatrix<double> A(w_ * h_, w_ * h_);
+    Eigen::SparseMatrix<double> A(width * height, width * height);
     A.setFromTriplets(triplets.begin(), triplets.end());
     A.makeCompressed();
     Eigen::SimplicialCholesky<Eigen::SparseMatrix<double>> solver(A);
@@ -136,18 +137,18 @@ void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
             std::cerr << "No convergence" << std::endl;
         }
         else {
-            pixelData_.allocate(w_, h_, 1);
+            pixelData.allocate(width, height, 1);
 #ifdef NORMALIZE
             float maxVal = -HUGE_VALF;
-            for (int i = 0; i < w_ * h_; i++) {
+            for (int i = 0; i < width * height; i++) {
                 if (abs(x[i]) > maxVal)
                     maxVal = abs(x[i]);
             }
-            for (int i = 0; i < w_ * h_; i++) {
-                pixelData_[i] = abs(x[i]) / maxVal * 255;
+            for (int i = 0; i < width * height; i++) {
+                pixelData[i] = abs(x[i]) / maxVal * 255;
             }
 #else 
-            for (int i = 0; i < w_ * h_; i++) {
+            for (int i = 0; i < width * height; i++) {
                 pixelData_[i] = x[i] * 255 / WHITE;
             }
 #endif
@@ -157,25 +158,23 @@ void ComputeGradient::solveEigen(const float* gradient, const float* boundary) {
 
 void ComputeGradient::solveGaussSeidel(const float* gradient, const float* boundary) {
     // construct the matrix
-    float* I = new float[w_ * h_];
-    int neighbours[4];
-    bool bounds[4];
-    for (int i = 0; i < w_ * h_; i++) {
+    float* I = new float[width * height];
+    for (int i = 0; i < width * height; i++) {
         I[i] = gradient[i];
     }
 
     // solve matrix
-    for (int i = 0; i < iterations_; i++) {
-        for (int j = 0; j < w_ * h_; j++) {
+    for (int i = 0; i < iterations; i++) {
+        for (int j = 0; j < width * height; j++) {
             if (gradient[j] == 0.0f)
                 this->gaussSeidelStep(I, boundary, j);
         }
     }
 
-    pixelData_.allocate(w_, h_, 1);
+    pixelData.allocate(width, height, 1);
 
-    for (int i = 0; i < w_ * h_; i++) {
-        pixelData_[i] = I[i] * 255 / WHITE;
+    for (int i = 0; i < width * height; i++) {
+        pixelData[i] = I[i] * 255 / WHITE;
     }
     
     delete[] I;
@@ -185,7 +184,7 @@ void ComputeGradient::gaussSeidelStep(float * I, const float* boundary, const in
     int neighbours[4];
     bool bounds[4];
 
-    getNeighbours(neighbours, bounds, idx, w_, h_);
+    getNeighbours(neighbours, bounds, idx, width, height);
 
     I[idx] = 0;
     I[idx] += !bounds[0] ? I[neighbours[0]] : boundary[neighbours[0]];

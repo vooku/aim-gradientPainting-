@@ -3,6 +3,7 @@
 #include "ofMain.h"
 #include "ofxGui.h"
 #include "ComputeGradient.h"
+#include <string>
 
 class ofApp : public ofBaseApp {
 public:
@@ -26,7 +27,7 @@ public:
 	void saveImage(void);
 	void inverseImage(void);
     void generateGradient(void);
-    void switchToggle();
+    void switchToggle(const void * sender, bool & value);
 		
 private:
 	ofImage img_;
@@ -40,5 +41,6 @@ private:
 	ofxButton loadButton_, saveButton_, invButton_, genButton_;
     ofxVec2Slider size_;
     ofxIntSlider iterations_;
-    ofParameter<bool> eigenToggle_, gsToggle_;
+    ofxGuiGroup options_;
+    ofxToggle toggle_;
 };
