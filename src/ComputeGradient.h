@@ -5,20 +5,26 @@
 
 class ComputeGradient : public ofThread {
 public:
-    void setup(const int w, const int h, const int i, const bool gs);
+    struct GradientSetup {
+        int width, height;
+        int iterations;
+        float* gradient;
+        float* boundary;
+        bool useGaussSeidel;
+    };
+
+    void setup(const GradientSetup& gradientSetup);
 
     void threadedFunction();
 
     bool done;
-    ofPixels pixelData;
-    int width, height, iterations;
+    ofPixels pixelData;    
 
 private:
-    void solveEigen(const float* gradient, const float* boundary);
-    void solveGaussSeidel(const float* gradient, const float* boundary);
-    void gaussSeidelStep(float* I, const float* boundary, const int idx);
+    void solveEigen(void);
+    void solveGaussSeidel(void);
 
-    bool useGaussSeidel;
+    GradientSetup parametres_;
 };
 
 #endif // !COMPUTE_GRADIENT

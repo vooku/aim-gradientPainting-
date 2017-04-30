@@ -10,6 +10,7 @@ public:
 	void setup();
 	void update();
 	void draw();
+    void exit();
 
 	//void keyPressed(int key);
 	void keyReleased(int key);
@@ -27,20 +28,28 @@ public:
 	void saveImage(void);
 	void inverseImage(void);
     void generateGradient(void);
-    void switchToggle(const void * sender, bool & value);
+    void sourceGradient(void); ///< Works for color input only!!!
 		
 private:
 	ofImage img_;
 	string originalFileExtension_;
 
     ComputeGradient computeGradient_;
+    ComputeGradient computers_[3];
+    enum class CompType {UNSET, GRAYSCALE, RGB};
+    CompType compType_;
     bool computing_;
+
+    ComputeGradient::GradientSetup sampleSetup_;
+    bool sampleSetupFlag_;
+    ComputeGradient::GradientSetup rgbSetup_[3];
+    bool rgbSetupFlag_;
 
 	// gui
 	ofxPanel gui_;
-	ofxButton loadButton_, saveButton_, invButton_, genButton_;
+	ofxButton loadButton_, saveButton_, invButton_, genButton_, srcButton_;
     ofxVec2Slider size_;
-    ofxIntSlider iterations_;
     ofxGuiGroup options_;
     ofxToggle toggle_;
+    ofxIntSlider iterations_;
 };
