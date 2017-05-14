@@ -12,17 +12,7 @@ public:
 	void draw();
     void exit();
 
-	//void keyPressed(int key);
 	void keyReleased(int key);
-	//void mouseMoved(int x, int y );
-	//void mouseDragged(int x, int y, int button);
-	//void mousePressed(int x, int y, int button);
-	//void mouseReleased(int x, int y, int button);
-	//void mouseEntered(int x, int y);
-	//void mouseExited(int x, int y);
-	//void windowResized(int w, int h);
-	//void dragEvent(ofDragInfo dragInfo);
-	//void gotMessage(ofMessage msg);
 
 	void loadImage(void);
 	void saveImage(void);
@@ -36,6 +26,7 @@ private:
 
     ComputeGradient computeGradient_;
     ComputeGradient computers_[3];
+    bool* mask_;
     enum class CompType {UNSET, GRAYSCALE, RGB};
     CompType compType_;
     bool computing_;
@@ -50,6 +41,7 @@ private:
 	ofxButton loadButton_, saveButton_, invButton_, genButton_, srcButton_;
     ofxVec2Slider size_;
     ofxGuiGroup options_;
-    ofxToggle toggle_;
+    ofxToggle solverToggle_;
+    ofxToggle boundaryToggle_;
     ofxIntSlider iterations_;
 };

@@ -8,9 +8,11 @@ public:
     struct GradientSetup {
         int width, height;
         int iterations;
+        bool* mask;
         float* gradient;
         float* boundary;
         bool useGaussSeidel;
+        bool givenBoundary;
     };
 
     void setup(const GradientSetup& gradientSetup);

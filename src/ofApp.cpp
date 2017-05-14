@@ -8,6 +8,7 @@ void ofApp::setup() {
     computing_ = false;
     sampleSetupFlag_ = false;
     rgbSetupFlag_ = false;
+    mask_ = nullptr;
     compType_ = CompType::UNSET;
 
 	ofBackground(ofColor(40));
@@ -20,7 +21,9 @@ void ofApp::setup() {
     gui_.add(genButton_.setup("Example gradient"));
     options_.setup();
     options_.setName("Options");
-    options_.add(toggle_.setup("Use Gauss Seidel", true));
+    //options_.add(solverToggle_.setup("Use Gauss Seidel", true));
+    solverToggle_.setup(true); // Always use Gauss Seidel - Eigen lib gives weird results
+    options_.add(boundaryToggle_.setup("Given Boundary", false));
     options_.add(iterations_.setup("Iterations", 1000, 0, 5000));
     options_.add(size_.setup("Size", ofVec2f(100), ofVec2f(0), ofVec2f(1000)));
     gui_.add(&options_);    
@@ -93,6 +96,7 @@ void ofApp::exit() {
             delete[] rgbSetup_[i].boundary;
         }
     }
+    delete[] mask_;
 }
 
 //--------------------------------------------------------------
@@ -187,13 +191,17 @@ void ofApp::generateGradient(void) {
     sampleSetup_.boundary = new float[2 * (width + height)];
     sampleSetupFlag_ = true;
 
+    if (mask_ != nullptr)
+        delete[] mask_;
+    mask_ = new bool[width * height];
+
     // prepare sample gradient
     for (int j = 0; j < height; j++) {
         for (int i = 0; i < width; i++) {
             if (j == height / 2 && i > width / 3 && i < width * 2 / 3.0f)
-                sampleSetup_.gradient[j * width + i] = 1;
+                sampleSetup_.gradient[j * width + i] = mask_[j * width + i] = 1;
             else
-                sampleSetup_.gradient[j * width + i] = 0;
+                sampleSetup_.gradient[j * width + i] = mask_[j * width + i] = 0;
         }
     }
 
@@ -208,7 +216,9 @@ void ofApp::generateGradient(void) {
     sampleSetup_.width = width;
     sampleSetup_.height = height;
     sampleSetup_.iterations = iterations_;
-    sampleSetup_.useGaussSeidel = toggle_;
+    sampleSetup_.useGaussSeidel = solverToggle_;
+    sampleSetup_.givenBoundary = boundaryToggle_;
+    sampleSetup_.mask = mask_;
 
     computeGradient_.setup(sampleSetup_);
     computeGradient_.startThread();
@@ -240,12 +250,21 @@ void ofApp::sourceGradient(void) {
     const int height = img_.getHeight();
     const ofPixels pixelData = img_.getPixels();
     const int channels = pixelData.getNumChannels();
+    
+    if (mask_ != nullptr)
+        delete[] mask_;
+    mask_ = new bool[width * height];
+    for (int i = 0; i < width * height; i++) {
+        mask_[i] = pixelData[channels * i] + pixelData[channels * i + 1] + pixelData[channels * i + 2] > 0;
+    }
 
     auto setupChannel = [&](const int idx) {
         rgbSetup_[idx].width = width;
         rgbSetup_[idx].height = height;
-        rgbSetup_[idx].useGaussSeidel = toggle_;
+        rgbSetup_[idx].useGaussSeidel = solverToggle_;
+        sampleSetup_.givenBoundary = boundaryToggle_;
         rgbSetup_[idx].iterations = iterations_;
+        rgbSetup_[idx].mask = mask_;
 
         rgbSetup_[idx].gradient = new float[width * height];
 

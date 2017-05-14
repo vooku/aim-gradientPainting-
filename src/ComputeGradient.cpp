@@ -138,18 +138,17 @@ void ComputeGradient::solveGaussSeidel(void) {
         bool bounds[4];
 
         getNeighbours(neighbours, bounds, idx, parametres_.width, parametres_.height);
-
-        I[idx] = 0;
-        I[idx] += !bounds[0] ? I[neighbours[0]] : parametres_.boundary[neighbours[0]];
-        I[idx] += !bounds[1] ? I[neighbours[1]] : parametres_.boundary[neighbours[1]];
-        I[idx] += !bounds[2] ? I[neighbours[2]] : parametres_.boundary[neighbours[2]];
-        I[idx] += !bounds[3] ? I[neighbours[3]] : parametres_.boundary[neighbours[3]];
-        I[idx] /= 4;
+  
+        float value = 0;
+        for (int i = 0; i < 4; i++) {
+            value += !bounds[i] ? I[neighbours[i]] : parametres_.givenBoundary ? parametres_.boundary[neighbours[i]] : I[idx];
+        };
+        I[idx] = value / 4;
     };
 
     for (int i = 0; i < parametres_.iterations; i++) {
         for (int j = 0; j < parametres_.width * parametres_.height; j++) {
-            if (parametres_.gradient[j] == 0.0f)
+            if (!parametres_.mask[j])
                 gaussSeidelStep(I, j);
         }
     }
