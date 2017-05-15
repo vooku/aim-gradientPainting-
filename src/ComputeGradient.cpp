@@ -2,8 +2,17 @@
 #include "Eigen/Sparse"
 #include "Eigen/IterativeLinearSolvers"
 
-#define NORMALIZE
+#define NORMALIZE ///< Used in Eigen direct solver to normalize out of bounds results.
 
+/** \brief Returns positions of neighbours for the given pixel index.
+ * \param[in]   idx         Index of the input pixel
+ * \param[in]   w           Image width
+ * \param[in]   h           Image height
+ * \param[out]  neighbours  Array of length 4 for the neighbours in the order
+ *                          top, right, bottom, left.
+ * \param[out]  bounds      Array of length 4 indicating whether the neighbour 
+ *                          is in the boundary or in the image.
+ */
 void getNeighbours(int* neighbours, bool* bounds, const int idx, const int w, const int h) {
     // first row
     if (idx < w) {
@@ -59,13 +68,13 @@ void ComputeGradient::threadedFunction() {
         this->solveGaussSeidel();
     }
     else {
-        this->solveEigen();
+        this->solveDirect();
     }
         
     done = true;
 }
 
-void ComputeGradient::solveEigen(void) {
+void ComputeGradient::solveDirect(void) {
     // construct the matrix
     std::vector<Eigen::Triplet<double>> triplets;
     Eigen::VectorXd b(parametres_.width * parametres_.height);
