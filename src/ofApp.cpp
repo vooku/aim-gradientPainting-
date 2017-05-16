@@ -5,6 +5,7 @@
 
 //--------------------------------------------------------------
 void ofApp::setup() {
+    ofSetWindowTitle("AIM Gradient Painting");
     computing_ = false;
     sampleSetupFlag_ = false;
     rgbSetupFlag_ = false;
@@ -24,7 +25,7 @@ void ofApp::setup() {
     //options_.add(solverToggle_.setup("Use Gauss Seidel", true));
     solverToggle_.setup(true); // Always use Gauss Seidel - Eigen lib gives weird results
     options_.add(boundaryToggle_.setup("Given Boundary", false));
-    options_.add(iterations_.setup("Iterations", 1000, 0, 5000));
+    options_.add(iterations_.setup("Iterations", 1000, 0, 10000));
     options_.add(size_.setup("Size", ofVec2f(100), ofVec2f(0), ofVec2f(1000)));
     gui_.add(&options_);    
 

@@ -1,9 +1,0 @@
-<group>
-	<group/>
-	<Next_generated_image_size>100, 100</Next_generated_image_size>
-<Options>
-		<Use_Eigen_library>0</Use_Eigen_library>
-		<Use_Gauss_Seidel>1</Use_Gauss_Seidel>
-		<Iterations>1000</Iterations>
-	</Options>
-</group>
